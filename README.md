@@ -97,6 +97,8 @@ Si quieres conservar la base SQLite y las imágenes subidas entre deploys, monta
 - `backend/data`
 - `backend/uploads`
 
+`backend/data` también guarda el secreto JWT persistente cuando no defines `JWT_SECRET` en Railway, así no se regeneran los tokens en cada redeploy.
+
 ### Nota para Windows si npm/node no aparecen en PATH
 
 Si PowerShell no reconoce `npm` o `node`, ejecutar temporalmente:

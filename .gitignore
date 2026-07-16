@@ -26,6 +26,7 @@ pnpm-debug.log*
 backend/data/*.db
 backend/data/*.sqlite
 backend/data/*.sqlite3
+backend/data/jwt-secret.txt
 *.db
 *.sqlite
 *.sqlite3
