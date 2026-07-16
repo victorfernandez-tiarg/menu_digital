@@ -54,7 +54,6 @@ Configurar variables de entorno del backend con un secreto fuerte por entorno:
 ```env
 PORT=3001
 JWT_SECRET=replace-with-a-strong-secret-min-32-chars
-FRONTEND_URL=http://localhost:5173
 ```
 
 Reglas recomendadas para `JWT_SECRET`:
@@ -76,6 +75,27 @@ Servicios esperados:
 - Frontend: http://localhost:5173
 - Backend: http://localhost:3001
 - Healthcheck: http://localhost:3001/api/health
+
+### Despliegue simple en Railway
+
+La forma más simple de desplegar este proyecto es como un solo servicio Node:
+
+1. Railway instala dependencias en la raíz y luego el `postinstall` instala `backend` y `frontend`.
+2. El build de producción ejecuta `npm run build`, que genera `frontend/dist`.
+3. El arranque usa `npm start`, que levanta el backend y sirve también el frontend compilado.
+
+Variables de entorno recomendadas en Railway:
+
+```env
+JWT_SECRET=replace-with-a-strong-secret-min-32-chars
+```
+
+`PORT` lo asigna Railway automáticamente.
+
+Si quieres conservar la base SQLite y las imágenes subidas entre deploys, monta un volumen para:
+
+- `backend/data`
+- `backend/uploads`
 
 ### Nota para Windows si npm/node no aparecen en PATH
 
