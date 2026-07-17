@@ -117,6 +117,8 @@ export default function CanteenPage() {
     queryKey: ['canteen-orders-history', user?.id],
     queryFn:  () => canteenApi.get('/orders/history').then((r) => r.data),
     enabled:  !!user,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const ordersByPeriod = useMemo(() => {
@@ -129,6 +131,7 @@ export default function CanteenPage() {
     mutationFn: (item_id: number) => canteenApi.post('/orders', { item_id, date: selectedDate }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['canteen-orders-mine'] })
+      queryClient.invalidateQueries({ queryKey: ['canteen-orders-history'] })
       toast.success('¡Pedido registrado!')
     },
     onError: (err: any) => {
@@ -152,6 +155,7 @@ export default function CanteenPage() {
     mutationFn: (id: number) => canteenApi.delete(`/orders/${id}`),
     onSuccess:  () => {
       queryClient.invalidateQueries({ queryKey: ['canteen-orders-mine'] })
+      queryClient.invalidateQueries({ queryKey: ['canteen-orders-history'] })
       toast.success('Pedido cancelado')
     },
     onError: (err: any) => toast.error(err.response?.data?.error || 'Error al cancelar'),
@@ -239,6 +243,11 @@ export default function CanteenPage() {
           >
             <History className="w-4 h-4" />
             Historial
+            {historyOrders.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-teal-100 text-teal-700">
+                {historyOrders.length}
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -429,10 +438,15 @@ export default function CanteenPage() {
         {/* ── Pestaña: Historial ── */}
         {tab === 'historial' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <History className="w-5 h-5 text-teal-700" />
-            Mis pedidos (últimos 30 días)
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <History className="w-5 h-5 text-teal-700" />
+              Mis pedidos
+            </h2>
+            {historyOrders.length > 0 && (
+              <span className="text-xs text-gray-400">{historyOrders.length} pedido{historyOrders.length !== 1 ? 's' : ''} — 30 días</span>
+            )}
+          </div>
 
           {historyLoading ? (
             <div className="flex justify-center py-12">
@@ -442,72 +456,140 @@ export default function CanteenPage() {
             <div className="text-center py-12 text-gray-400 bg-white rounded-xl border border-gray-100">
               <p className="text-sm">No tienes pedidos en los últimos 30 días</p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {historyOrders.map((order) => {
-                const cfg = PERIOD_CONFIG[order.period]
-                const isToday = order.date === today
-                const orderDate = new Date(order.date + 'T00:00:00')
-                const formattedDate = orderDate.toLocaleDateString('es-AR', { 
-                  weekday: 'short', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })
+          ) : (() => {
+            // Separar futuros (> hoy) de pasados/hoy (<= hoy)
+            const futureOrders   = historyOrders.filter(o => o.date > today)
+            const pastOrders     = historyOrders.filter(o => o.date <= today)
 
-                return (
-                  <div key={order.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between gap-3 hover:shadow-md transition-shadow">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="shrink-0">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${cfg.activeBg}`}>
-                          <cfg.Icon className="w-4 h-4" />
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">{order.item_name}</p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
-                          <span className="text-xs text-gray-500">
-                            {isToday ? '📍 Hoy' : formattedDate}
-                          </span>
-                        </div>
-                        {order.item_description && (
-                          <p className="text-xs text-gray-400 mt-1 line-clamp-2">{order.item_description}</p>
-                        )}
-                      </div>
-                    </div>
+            // Agrupar por fecha
+            const grouped = (list: HistoryOrder[]) =>
+              list.reduce((acc, order) => {
+                if (!acc[order.date]) acc[order.date] = []
+                acc[order.date].push(order)
+                return acc
+              }, {} as Record<string, HistoryOrder[]>)
 
-                    {isToday && order.can_cancel ? (
-                      <button
-                        onClick={() => {
-                          cancelOrder.mutate(order.id)
-                          queryClient.invalidateQueries({ queryKey: ['canteen-orders-history'] })
-                        }}
-                        disabled={cancelOrder.isPending}
-                        aria-busy={cancelOrder.isPending}
-                        className="text-xs font-medium shrink-0 transition-all flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {cancelOrder.isPending ? (
-                          <>
-                            <span className="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
-                            <span>Cancelando…</span>
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="w-3 h-3" />
-                            Cancelar
-                          </>
-                        )}
-                      </button>
-                    ) : isToday ? (
-                      <span className="text-xs font-medium text-gray-400 shrink-0">No disponible</span>
-                    ) : (
-                      <span className="text-xs text-gray-400 shrink-0">Pasado</span>
-                    )}
+            const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+
+            const dayLabel = (date: string) => {
+              if (date === today)    return '📍 Hoy'
+              if (date === tomorrow) return '📅 Mañana'
+              const d = new Date(date + 'T00:00:00')
+              return d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+            }
+
+            const renderGroup = (groupedDates: Record<string, HistoryOrder[]>, isFuture: boolean) => {
+              const sortedDates = Object.keys(groupedDates).sort((a, b) =>
+                isFuture ? a.localeCompare(b) : b.localeCompare(a)
+              )
+              return sortedDates.map((date) => (
+                <div key={date}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      date === today   ? 'bg-teal-100 text-teal-700' :
+                      isFuture         ? 'bg-blue-100 text-blue-700' :
+                                         'bg-gray-100 text-gray-600'
+                    }`}>
+                      {dayLabel(date)}
+                    </span>
+                    <span className="text-xs text-gray-300">
+                      {groupedDates[date].length} plato{groupedDates[date].length !== 1 ? 's' : ''}
+                    </span>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                  <div className="space-y-2">
+                    {groupedDates[date].map((order) => {
+                      const cfg = PERIOD_CONFIG[order.period]
+                      const isToday = date === today
+                      return (
+                        <div key={order.id} className={`bg-white rounded-xl border p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow ${
+                          isFuture && !isToday ? 'border-blue-100' : 'border-gray-200'
+                        }`}>
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ${cfg.activeBg}`}>
+                              <cfg.Icon className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 text-sm truncate">{order.item_name}</p>
+                              <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+                              {order.item_description && (
+                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{order.item_description}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {isToday && order.can_cancel ? (
+                            <button
+                              onClick={() => cancelOrder.mutate(order.id)}
+                              disabled={cancelOrder.isPending}
+                              aria-busy={cancelOrder.isPending}
+                              className="text-xs font-medium shrink-0 transition-all flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {cancelOrder.isPending ? (
+                                <>
+                                  <span className="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                  <span>Cancelando…</span>
+                                </>
+                              ) : (
+                                <><Trash2 className="w-3 h-3" /> Cancelar</>
+                              )}
+                            </button>
+                          ) : isFuture ? (
+                            <button
+                              onClick={() => cancelOrder.mutate(order.id)}
+                              disabled={cancelOrder.isPending}
+                              aria-busy={cancelOrder.isPending}
+                              className="text-xs font-medium shrink-0 transition-all flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {cancelOrder.isPending ? (
+                                <>
+                                  <span className="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                  <span>Cancelando…</span>
+                                </>
+                              ) : (
+                                <><Trash2 className="w-3 h-3" /> Cancelar</>
+                              )}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-300 shrink-0">Entregado</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))
+            }
+
+            return (
+              <div className="space-y-5">
+                {/* Pedidos futuros */}
+                {futureOrders.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Próximos</span>
+                      <span className="flex-1 h-px bg-blue-100" />
+                      <span className="text-xs text-blue-400">{futureOrders.length} pedido{futureOrders.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    {renderGroup(grouped(futureOrders), true)}
+                  </div>
+                )}
+
+                {/* Pedidos de hoy y pasados */}
+                {pastOrders.length > 0 && (
+                  <div className="space-y-4">
+                    {futureOrders.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Historial</span>
+                        <span className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-400">{pastOrders.length} pedido{pastOrders.length !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                    {renderGroup(grouped(pastOrders), false)}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
         )}
       </main>

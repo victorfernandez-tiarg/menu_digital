@@ -125,6 +125,7 @@ router.get('/orders/history', authenticateCanteen, (req, res) => {
   const db = getDb();
   const today = new Date().toISOString().split('T')[0];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const sevenDaysAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const orders = db.prepare(`
     SELECT o.id, o.period, o.date, o.ordered_at,
@@ -136,7 +137,7 @@ router.get('/orders/history', authenticateCanteen, (req, res) => {
     JOIN canteen_items i ON o.item_id = i.id
     WHERE o.user_id = ? AND o.date >= ? AND o.date <= ?
     ORDER BY o.date DESC, o.period DESC
-  `).all(today, req.cu.id, thirtyDaysAgo, today);
+  `).all(today, req.cu.id, thirtyDaysAgo, sevenDaysAhead);
 
   res.json(orders);
 });
