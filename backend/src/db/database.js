@@ -161,6 +161,38 @@ async function initDb() {
       turned_on_at INTEGER,
       duration_minutes REAL
     );
+
+    CREATE TABLE IF NOT EXISTS canteen_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      department TEXT,
+      role TEXT NOT NULL DEFAULT 'staff',
+      shift TEXT,
+      active BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS canteen_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      period TEXT NOT NULL,
+      available BOOLEAN DEFAULT 1,
+      order_index INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS canteen_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES canteen_users(id) ON DELETE CASCADE,
+      item_id INTEGER NOT NULL REFERENCES canteen_items(id) ON DELETE CASCADE,
+      period TEXT NOT NULL,
+      date TEXT NOT NULL,
+      ordered_at TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Seed: solo si no hay restaurantes
@@ -249,6 +281,54 @@ async function initDb() {
     console.log('✅ Seed: 2 restaurantes creados');
     console.log('   🥩 La Parrilla Don Carlos  →  /menu/don-carlos   (admin: carlos / admin123)');
     console.log('   🍣 Sushi Neko              →  /menu/sushi-neko   (admin: neko  / admin123)');
+  }
+
+  // ── Comedor seed ──────────────────────────────────────────────────────────
+  const anyCanteenUser = database.prepare('SELECT id FROM canteen_users LIMIT 1').get();
+  if (!anyCanteenUser) {
+    const adminPwd = bcrypt.hashSync('Admin123', 10);
+    const staffPwd = bcrypt.hashSync('Turno123', 10);
+
+    const insertUser = database.prepare(
+      'INSERT INTO canteen_users (username, password, full_name, department, role, shift) VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    insertUser.run('comedor_admin', adminPwd, 'Admin Comedor',  'Administración', 'admin', null);
+    insertUser.run('juan_garcia',   staffPwd, 'Juan García',    'Enfermería',     'staff', 'morning');
+    insertUser.run('maria_lopez',   staffPwd, 'María López',    'Guardia',        'staff', 'afternoon');
+    insertUser.run('pedro_ramos',   staffPwd, 'Pedro Ramos',    'Laboratorio',    'staff', 'night');
+
+    const insertItem = database.prepare(
+      'INSERT INTO canteen_items (name, description, period, available, order_index) VALUES (?, ?, ?, ?, ?)'
+    );
+
+    // Desayuno
+    insertItem.run('Café con leche',       'Bebida caliente de café con leche entera',                                  'desayuno', 1, 1);
+    insertItem.run('Mate cocido',           'Con azúcar o edulcorante a elección',                                       'desayuno', 1, 2);
+    insertItem.run('Tostadas con manteca',  '2 rebanadas de pan de molde tostadas con manteca y mermelada de durazno',   'desayuno', 1, 3);
+    insertItem.run('Medialunas de manteca', '2 medialunas de manteca recién horneadas',                                  'desayuno', 1, 4);
+
+    // Almuerzo
+    insertItem.run('Milanesa con puré',   'Milanesa de ternera rebozada con puré de papas casero',              'almuerzo', 1, 1);
+    insertItem.run('Arroz con pollo',     'Pollo en cubos con arroz blanco y verduras salteadas',               'almuerzo', 1, 2);
+    insertItem.run('Guiso de fideos',     'Fideos cortos en salsa de tomate con carne picada y morrón',         'almuerzo', 1, 3);
+    insertItem.run('Lentejas guisadas',   'Guiso de lentejas con chorizo colorado y papa',                      'almuerzo', 1, 4);
+
+    // Merienda
+    insertItem.run('Mate cocido con facturas',  'Mate cocido y 2 facturas de panadería',                    'merienda', 1, 1);
+    insertItem.run('Sándwich de jamón y queso', 'Miga integral con jamón cocido y queso cremoso',           'merienda', 1, 2);
+    insertItem.run('Fruta de estación',         'Porción de fruta fresca según disponibilidad del día',     'merienda', 1, 3);
+
+    // Cena
+    insertItem.run('Sopa de verduras',          'Caldo casero con zanahoria, zapallo, choclo y fideos finos',   'cena', 1, 1);
+    insertItem.run('Revuelto gramajo',          'Huevos revueltos con papas paja, jamón y morrón',               'cena', 1, 2);
+    insertItem.run('Tortilla de papas',         'Tortilla española con papa, cebolla y morrón',                  'cena', 1, 3);
+    insertItem.run('Arroz salteado con verduras','Arroz largo con zucchini, zanahoria y arvejas',                'cena', 1, 4);
+
+    console.log('✅ Seed: comedor creado');
+    console.log('   👤 comedor_admin / Admin123  →  /comedor/admin  (admin - ve todo)');
+    console.log('   👤 juan_garcia   / Turno123  →  /comedor        (turno mañana: desayuno + almuerzo)');
+    console.log('   👤 maria_lopez   / Turno123  →  /comedor        (turno tarde: almuerzo + merienda + cena)');
+    console.log('   👤 pedro_ramos   / Turno123  →  /comedor        (turno noche: cena + desayuno)');
   }
 
   saveDb();

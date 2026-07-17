@@ -9,6 +9,7 @@ const productsRoutes = require('./routes/products')
 const analyticsRoutes = require('./routes/analytics')
 const menuRoutes = require('./routes/menu')
 const restaurantsRoutes = require('./routes/restaurants')
+const canteenRoutes = require('./routes/canteen')
 const { apiRateLimiter, authRateLimiter } = require('./middleware/security')
 
 function createApp() {
@@ -30,6 +31,7 @@ function createApp() {
   app.use('/api/analytics', analyticsRoutes)
   app.use('/api/menu', menuRoutes)
   app.use('/api/restaurants', restaurantsRoutes)
+  app.use('/api/comedor', canteenRoutes)
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
