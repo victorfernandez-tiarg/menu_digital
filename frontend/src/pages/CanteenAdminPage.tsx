@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -80,6 +80,14 @@ function PedidosPanel() {
     acc[p] = orders.filter((o) => o.period === p)
     return acc
   }, {} as Record<string, AdminOrder[]>)
+
+  // Debug: verificar estructura de datos
+  useEffect(() => {
+    if (orders.length > 0) {
+      console.log('📊 Datos recibidos (primeras 3 órdenes):', orders.slice(0, 3))
+      console.log('🔍 Campos disponibles en primer order:', Object.keys(orders[0]))
+    }
+  }, [orders])
 
   const toggleExpand = (key: string) => {
     setExpandedItems(prev => ({ ...prev, [key]: !prev[key] }))
