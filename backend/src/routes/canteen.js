@@ -149,20 +149,17 @@ router.post('/orders', authenticateCanteen, (req, res) => {
   if (!item_id) return res.status(400).json({ error: 'item_id requerido' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Fecha inválida' });
 
-  // Validar que la fecha esté dentro del rango permitido
+  // Validar que la fecha esté dentro del rango permitido: hoy o mañana (máximo 24h de anticipación)
   const today = new Date().toISOString().split('T')[0];
-  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  if (date < today || date > nextWeek) {
-    return res.status(400).json({ error: 'La fecha debe estar entre hoy y 7 días después' });
-  }
+  const todayObj = new Date();
+  todayObj.setDate(todayObj.getDate() + 1);
+  const tomorrow = todayObj.toISOString().split('T')[0];
 
-  // Validar cutoff de 24 horas: no puede pedir para una fecha si pasó hace más de 24 horas desde el inicio de ese día
-  const orderDate = new Date(date + 'T00:00:00Z').getTime();
-  const now = Date.now();
-  const hoursUntilOrderDate = (orderDate - now) / (1000 * 60 * 60);
-  
-  if (hoursUntilOrderDate < -24) {
-    return res.status(400).json({ error: 'No puedes pedir con más de 24 horas de anticipación vencida' });
+  if (date < today) {
+    return res.status(400).json({ error: 'No podés pedir para fechas pasadas' });
+  }
+  if (date > tomorrow) {
+    return res.status(400).json({ error: 'Solo podés pedir con hasta 24 horas de anticipación (hoy o mañana)' });
   }
 
   const db = getDb();

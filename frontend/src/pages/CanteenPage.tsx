@@ -87,7 +87,9 @@ export default function CanteenPage() {
   }, [])
 
   const today = new Date().toISOString().split('T')[0]
-  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const tomorrowObj = new Date()
+  tomorrowObj.setDate(tomorrowObj.getDate() + 1)
+  const tomorrow = tomorrowObj.toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [tab, setTab] = useState<'pedir' | 'historial'>('pedir')
 
@@ -264,7 +266,7 @@ export default function CanteenPage() {
             </label>
             <span className="text-xs text-gray-500">
               {selectedDate === today ? '📍 Hoy' : 
-               selectedDate === new Date(new Date(today).getTime() + 86400000).toISOString().split('T')[0] ? '📍 Mañana' :
+               selectedDate === tomorrow ? '📍 Mañana' :
                '📍 ' + new Date(selectedDate).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' })}
             </span>
           </div>
@@ -274,7 +276,7 @@ export default function CanteenPage() {
               type="date"
               value={selectedDate}
               min={today}
-              max={nextWeek}
+              max={tomorrow}
               onChange={(e) => setSelectedDate(e.target.value)}
               aria-label="Selector de fecha para pedir"
               aria-describedby="date-help-text"
@@ -291,7 +293,7 @@ export default function CanteenPage() {
             )}
           </div>
           <p id="date-help-text" className="text-xs text-gray-600 flex items-center gap-1">
-            <span>✓ Válido:</span> hoy hasta {new Date(new Date(nextWeek).getTime()).toLocaleDateString('es-AR')} (máx. 7 días)
+            <span>✓ Podés pedir para:</span> hoy o mañana (máx. 24 horas de anticipación)
           </p>
         </div>
 
