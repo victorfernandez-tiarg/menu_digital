@@ -69,6 +69,7 @@ function PedidosPanel() {
   const today = new Date().toISOString().split('T')[0]
   const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const [date, setDate] = useState(today)
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
 
   const { data: orders = [], isLoading } = useQuery<AdminOrder[]>({
     queryKey: ['canteen-admin-orders', date],
@@ -79,6 +80,10 @@ function PedidosPanel() {
     acc[p] = orders.filter((o) => o.period === p)
     return acc
   }, {} as Record<string, AdminOrder[]>)
+
+  const toggleExpand = (key: string) => {
+    setExpandedItems(prev => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const downloadCSV = async () => {
     try {
@@ -196,6 +201,18 @@ function PedidosPanel() {
           const pOrders = grouped[period]
           if (!pOrders.length) return null
           const cfg = PERIOD_CONFIG[period]
+
+          // Agrupar por item_name y contar
+          const itemsMap = pOrders.reduce((acc, o) => {
+            if (!acc[o.item_name]) {
+              acc[o.item_name] = { orders: [], name: o.item_name, description: o.item_description }
+            }
+            acc[o.item_name].orders.push(o)
+            return acc
+          }, {} as Record<string, { orders: AdminOrder[]; name: string; description: string | null }>)
+
+          const items = Object.values(itemsMap)
+
           return (
             <div key={period} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className={`flex items-center gap-2 px-4 py-2.5 ${cfg.bg} border-b border-gray-100`}>
@@ -204,23 +221,54 @@ function PedidosPanel() {
                 <span className="ml-auto text-xs text-gray-500">{pOrders.length} pedido{pOrders.length !== 1 ? 's' : ''}</span>
               </div>
               <div className="divide-y divide-gray-50">
-                {pOrders.map((o) => (
-                  <div key={o.id} className="px-4 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{o.full_name}</p>
-                      <p className="text-xs text-gray-400">
-                        {o.department ?? '—'}
-                        {o.shift ? ` · ${SHIFT_LABELS[o.shift] ?? o.shift}` : ''}
-                      </p>
+                {items.map((item) => {
+                  const key = `${period}-${item.name}`
+                  const isExpanded = expandedItems[key]
+                  return (
+                    <div key={key}>
+                      {/* Item agregado */}
+                      <button
+                        onClick={() => toggleExpand(key)}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-teal-100 text-teal-700">
+                              ×{item.orders.length}
+                            </span>
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-gray-400 mt-1">{item.description}</p>
+                          )}
+                        </div>
+                        <span className="text-gray-400 ml-3 shrink-0">
+                          {isExpanded ? '▼' : '▶'}
+                        </span>
+                      </button>
+
+                      {/* Detalles expandidos */}
+                      {isExpanded && (
+                        <div className="bg-gray-50 border-t border-gray-100 divide-y divide-gray-100">
+                          {item.orders.map((o) => (
+                            <div key={o.id} className="px-4 py-2 flex items-center gap-3 text-xs">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-gray-700 font-medium">{o.full_name}</p>
+                                <p className="text-gray-400">
+                                  {o.department ?? '—'}
+                                  {o.shift ? ` · ${SHIFT_LABELS[o.shift] ?? o.shift}` : ''}
+                                </p>
+                              </div>
+                              <span className="text-gray-400 shrink-0">
+                                {new Date(o.ordered_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm text-gray-700">{o.item_name}</p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(o.ordered_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )
