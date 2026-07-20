@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -81,14 +81,6 @@ function PedidosPanel() {
     return acc
   }, {} as Record<string, AdminOrder[]>)
 
-  // Debug: verificar estructura de datos
-  useEffect(() => {
-    if (orders.length > 0) {
-      console.log('📊 Datos recibidos (primeras 3 órdenes):', orders.slice(0, 3))
-      console.log('🔍 Campos disponibles en primer order:', Object.keys(orders[0]))
-    }
-  }, [orders])
-
   const toggleExpand = (key: string) => {
     setExpandedItems(prev => ({ ...prev, [key]: !prev[key] }))
   }
@@ -160,40 +152,41 @@ function PedidosPanel() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-gray-500">
+      {/* Toolbar: 2 filas en móvil, 1 fila en sm+ */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-gray-500 min-w-0 truncate">
             {orders.length} pedido{orders.length !== 1 ? 's' : ''} para esta fecha
           </p>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={downloadCSV}
+              disabled={orders.length === 0}
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              title={orders.length === 0 ? 'Sin pedidos para descargar' : 'Descargar como CSV'}
+            >
+              <Download className="w-3.5 h-3.5" />
+              CSV
+            </button>
+            <button
+              onClick={downloadComanda}
+              disabled={orders.length === 0}
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              title={orders.length === 0 ? 'Sin pedidos para comanda' : 'Descargar comanda de cocina'}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Comanda
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={date}
-            min={today}
-            max={nextWeek}
-            onChange={(e) => setDate(e.target.value)}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
-          />
-          <button
-            onClick={downloadCSV}
-            disabled={orders.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
-            title={orders.length === 0 ? 'Sin pedidos para descargar' : 'Descargar como CSV'}
-          >
-            <Download className="w-3.5 h-3.5" />
-            CSV
-          </button>
-          <button
-            onClick={downloadComanda}
-            disabled={orders.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
-            title={orders.length === 0 ? 'Sin pedidos para comanda' : 'Descargar comanda de cocina'}
-          >
-            <Download className="w-3.5 h-3.5" />
-            Comanda
-          </button>
-        </div>
+        <input
+          type="date"
+          value={date}
+          min={today}
+          max={nextWeek}
+          onChange={(e) => setDate(e.target.value)}
+          className="w-full sm:w-auto text-sm border border-gray-300 rounded-lg px-3 py-1.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
       </div>
 
       {isLoading ? (
@@ -357,25 +350,27 @@ function PlatosPanel() {
   return (
     <div className="space-y-4">
       {/* Filter + Add button */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {(['all', ...PERIOD_ORDER] as string[]).map((p) => {
-          const cfg = p === 'all' ? null : PERIOD_CONFIG[p]
-          return (
-            <button
-              key={p}
-              onClick={() => setFilterPeriod(p)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1 ${
-                filterPeriod === p ? 'bg-gray-800 text-white border-transparent' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              {cfg && <cfg.Icon className="w-3.5 h-3.5" />}
-              {cfg ? cfg.label : 'Todos'}
-            </button>
-          )
-        })}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {(['all', ...PERIOD_ORDER] as string[]).map((p) => {
+            const cfg = p === 'all' ? null : PERIOD_CONFIG[p]
+            return (
+              <button
+                key={p}
+                onClick={() => setFilterPeriod(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1 ${
+                  filterPeriod === p ? 'bg-gray-800 text-white border-transparent' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {cfg && <cfg.Icon className="w-3.5 h-3.5" />}
+                {cfg ? cfg.label : 'Todos'}
+              </button>
+            )
+          })}
+        </div>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" /> Agregar plato
         </button>
@@ -651,8 +646,8 @@ function PersonalPanel() {
   const UserRow = ({ u }: { u: CanteenUser }) => (
     <div className={`px-4 py-3 flex items-center gap-3 ${!u.active ? 'opacity-50' : ''}`}>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900">{u.full_name}</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-sm font-medium text-gray-900 truncate">{u.full_name}</p>
+        <p className="text-xs text-gray-400 truncate">
           @{u.username}
           {u.department ? ` · ${u.department}` : ''}
           {u.shift ? ` · ${SHIFT_LABELS[u.shift] ?? u.shift}` : ''}
@@ -947,14 +942,15 @@ export default function CanteenAdminPage() {
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                title={label}
+                className={`flex flex-1 items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   tab === key
                     ? 'border-teal-600 text-teal-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {label}
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>

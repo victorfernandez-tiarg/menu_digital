@@ -68,8 +68,8 @@ export default function CanteenAdminDashboard() {
 
       {/* ── Resumen de Hoy (Cards) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {/* Total */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+        {/* Total — ancho completo en móvil para no dejar última card sola */}
+        <div className="col-span-2 sm:col-span-1 bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
           <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Pedidos</p>
           <p className="text-3xl font-bold text-teal-700 mt-2">
             {summaryLoading ? '—' : summary?.total ?? 0}
