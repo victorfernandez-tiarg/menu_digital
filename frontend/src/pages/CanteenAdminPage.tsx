@@ -913,7 +913,7 @@ export default function CanteenAdminPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 overflow-x-clip">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
@@ -936,14 +936,15 @@ export default function CanteenAdminPage() {
         </div>
 
         {/* Tabs */}
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="flex gap-1">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex w-full border-b border-gray-100">
             {TABS.map(({ key, label, Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
                 title={label}
-                className={`flex flex-1 items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                aria-label={label}
+                className={`flex flex-1 items-center justify-center gap-1 sm:gap-1.5 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   tab === key
                     ? 'border-teal-600 text-teal-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
