@@ -197,6 +197,8 @@ async function initDb() {
 
   // ── Migraciones (columnas añadidas post-deploy) ──────────────────────────
   try { sqlJsDb.run('ALTER TABLE canteen_items ADD COLUMN image_url TEXT'); } catch (_) {}
+  try { sqlJsDb.run('ALTER TABLE canteen_items ADD COLUMN weight_grams INTEGER'); } catch (_) {}
+  try { sqlJsDb.run('ALTER TABLE canteen_items ADD COLUMN calories INTEGER'); } catch (_) {}
 
   // Seed: solo si no hay restaurantes
   const anyRestaurant = database.prepare('SELECT id FROM restaurants LIMIT 1').get();
@@ -301,31 +303,31 @@ async function initDb() {
     insertUser.run('pedro_ramos',   staffPwd, 'Pedro Ramos',    'Laboratorio',    'staff', 'night');
 
     const insertItem = database.prepare(
-      'INSERT INTO canteen_items (name, description, period, available, order_index) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO canteen_items (name, description, period, available, order_index, weight_grams, calories) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
 
     // Desayuno
-    insertItem.run('Café con leche',       'Bebida caliente de café con leche entera',                                  'desayuno', 1, 1);
-    insertItem.run('Mate cocido',           'Con azúcar o edulcorante a elección',                                       'desayuno', 1, 2);
-    insertItem.run('Tostadas con manteca',  '2 rebanadas de pan de molde tostadas con manteca y mermelada de durazno',   'desayuno', 1, 3);
-    insertItem.run('Medialunas de manteca', '2 medialunas de manteca recién horneadas',                                  'desayuno', 1, 4);
+    insertItem.run('Café con leche',       'Bebida caliente de café con leche entera',                                  'desayuno', 1, 1, 250, 180);
+    insertItem.run('Mate cocido',           'Con azúcar o edulcorante a elección',                                       'desayuno', 1, 2, 200,  30);
+    insertItem.run('Tostadas con manteca',  '2 rebanadas de pan de molde tostadas con manteca y mermelada de durazno',   'desayuno', 1, 3, 120, 320);
+    insertItem.run('Medialunas de manteca', '2 medialunas de manteca recién horneadas',                                  'desayuno', 1, 4,  90, 380);
 
     // Almuerzo
-    insertItem.run('Milanesa con puré',   'Milanesa de ternera rebozada con puré de papas casero',              'almuerzo', 1, 1);
-    insertItem.run('Arroz con pollo',     'Pollo en cubos con arroz blanco y verduras salteadas',               'almuerzo', 1, 2);
-    insertItem.run('Guiso de fideos',     'Fideos cortos en salsa de tomate con carne picada y morrón',         'almuerzo', 1, 3);
-    insertItem.run('Lentejas guisadas',   'Guiso de lentejas con chorizo colorado y papa',                      'almuerzo', 1, 4);
+    insertItem.run('Milanesa con puré',   'Milanesa de ternera rebozada con puré de papas casero',              'almuerzo', 1, 1, 380, 620);
+    insertItem.run('Arroz con pollo',     'Pollo en cubos con arroz blanco y verduras salteadas',               'almuerzo', 1, 2, 400, 520);
+    insertItem.run('Guiso de fideos',     'Fideos cortos en salsa de tomate con carne picada y morrón',         'almuerzo', 1, 3, 380, 490);
+    insertItem.run('Lentejas guisadas',   'Guiso de lentejas con chorizo colorado y papa',                      'almuerzo', 1, 4, 350, 430);
 
     // Merienda
-    insertItem.run('Mate cocido con facturas',  'Mate cocido y 2 facturas de panadería',                    'merienda', 1, 1);
-    insertItem.run('Sándwich de jamón y queso', 'Miga integral con jamón cocido y queso cremoso',           'merienda', 1, 2);
-    insertItem.run('Fruta de estación',         'Porción de fruta fresca según disponibilidad del día',     'merienda', 1, 3);
+    insertItem.run('Mate cocido con facturas',  'Mate cocido y 2 facturas de panadería',                    'merienda', 1, 1, 250, 310);
+    insertItem.run('Sándwich de jamón y queso', 'Miga integral con jamón cocido y queso cremoso',           'merienda', 1, 2, 180, 380);
+    insertItem.run('Fruta de estación',         'Porción de fruta fresca según disponibilidad del día',     'merienda', 1, 3, 200,  90);
 
     // Cena
-    insertItem.run('Sopa de verduras',          'Caldo casero con zanahoria, zapallo, choclo y fideos finos',   'cena', 1, 1);
-    insertItem.run('Revuelto gramajo',          'Huevos revueltos con papas paja, jamón y morrón',               'cena', 1, 2);
-    insertItem.run('Tortilla de papas',         'Tortilla española con papa, cebolla y morrón',                  'cena', 1, 3);
-    insertItem.run('Arroz salteado con verduras','Arroz largo con zucchini, zanahoria y arvejas',                'cena', 1, 4);
+    insertItem.run('Sopa de verduras',          'Caldo casero con zanahoria, zapallo, choclo y fideos finos',   'cena', 1, 1, 300, 180);
+    insertItem.run('Revuelto gramajo',          'Huevos revueltos con papas paja, jamón y morrón',               'cena', 1, 2, 280, 420);
+    insertItem.run('Tortilla de papas',         'Tortilla española con papa, cebolla y morrón',                  'cena', 1, 3, 250, 390);
+    insertItem.run('Arroz salteado con verduras','Arroz largo con zucchini, zanahoria y arvejas',                'cena', 1, 4, 300, 310);
 
     console.log('✅ Seed: comedor creado');
     console.log('   👤 comedor_admin / Admin123  →  /comedor/admin  (admin - ve todo)');

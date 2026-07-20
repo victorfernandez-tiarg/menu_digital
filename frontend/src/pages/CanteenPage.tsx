@@ -28,6 +28,8 @@ interface CanteenItem {
   available: number
   order_index: number
   image_url: string | null
+  weight_grams: number | null
+  calories: number | null
 }
 
 interface CanteenOrder {
@@ -411,6 +413,13 @@ export default function CanteenPage() {
                       </p>
                       {item.description && (
                         <p className="text-xs text-gray-400 mt-0.5 leading-snug">{item.description}</p>
+                      )}
+                      {(item.weight_grams || item.calories) && (
+                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+                          {item.weight_grams && <span>⚖️ {item.weight_grams}g</span>}
+                          {item.weight_grams && item.calories && <span className="text-gray-300">·</span>}
+                          {item.calories && <span>🔥 {item.calories} kcal</span>}
+                        </p>
                       )}
                     </div>
 

@@ -123,7 +123,10 @@ router.get('/orders/mine', authenticateCanteen, (req, res) => {
 
 router.get('/orders/history', authenticateCanteen, (req, res) => {
   const db = getDb();
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const hour = now.getHours();
+  const canCancelToday = hour < 9 ? 1 : 0;  // Solo antes de las 9 AM
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const sevenDaysAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -132,12 +135,12 @@ router.get('/orders/history', authenticateCanteen, (req, res) => {
            i.id   AS item_id,
            i.name AS item_name,
            i.description AS item_description,
-           CASE WHEN o.date = ? THEN 1 ELSE 0 END AS can_cancel
+           CASE WHEN o.date = ? AND ? = 1 THEN 1 ELSE 0 END AS can_cancel
     FROM canteen_orders o
     JOIN canteen_items i ON o.item_id = i.id
     WHERE o.user_id = ? AND o.date >= ? AND o.date <= ?
     ORDER BY o.date DESC, o.period DESC
-  `).all(today, req.cu.id, thirtyDaysAgo, sevenDaysAhead);
+  `).all(today, canCancelToday, req.cu.id, thirtyDaysAgo, sevenDaysAhead);
 
   res.json(orders);
 });
@@ -205,11 +208,21 @@ router.post('/orders', authenticateCanteen, (req, res) => {
 
 router.delete('/orders/:id', authenticateCanteen, (req, res) => {
   const db    = getDb();
-  const today = new Date().toISOString().split('T')[0];
+  const now   = new Date();
+  const today = now.toISOString().split('T')[0];
+  const hour  = now.getHours();
+  
   const order = db.prepare(
-    'SELECT * FROM canteen_orders WHERE id = ? AND user_id = ? AND date = ?'
-  ).get(req.params.id, req.cu.id, today);
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado o no se puede cancelar' });
+    'SELECT * FROM canteen_orders WHERE id = ? AND user_id = ?'
+  ).get(req.params.id, req.cu.id);
+  
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+  
+  // Solo se puede cancelar antes de las 9 AM del día del pedido
+  if (order.date !== today || hour >= 9) {
+    return res.status(403).json({ error: 'No puedes cancelar este pedido (límite: 9:00 AM del día)' });
+  }
+  
   db.prepare('DELETE FROM canteen_orders WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
@@ -223,19 +236,21 @@ router.get('/admin/items', authenticateCanteen, requireAdmin, (_req, res) => {
 });
 
 router.post('/admin/items', authenticateCanteen, requireAdmin, (req, res) => {
-  const name        = toStr(req.body?.name);
-  const description = toStr(req.body?.description) || null;
-  const period      = toStr(req.body?.period);
-  const order_index = parseInt(req.body?.order_index) || 0;
-  const image_url   = toStr(req.body?.image_url) || null;
+  const name         = toStr(req.body?.name);
+  const description  = toStr(req.body?.description) || null;
+  const period       = toStr(req.body?.period);
+  const order_index  = parseInt(req.body?.order_index) || 0;
+  const image_url    = toStr(req.body?.image_url) || null;
+  const weight_grams = req.body?.weight_grams ? parseInt(req.body.weight_grams) : null;
+  const calories     = req.body?.calories ? parseInt(req.body.calories) : null;
 
   if (!name)                           return res.status(400).json({ error: 'El nombre es requerido' });
   if (!VALID_PERIODS.includes(period)) return res.status(400).json({ error: 'Período inválido' });
 
   const db     = getDb();
   const result = db.prepare(
-    'INSERT INTO canteen_items (name, description, period, available, order_index, image_url) VALUES (?, ?, ?, 1, ?, ?)'
-  ).run(name, description, period, order_index, image_url);
+    'INSERT INTO canteen_items (name, description, period, available, order_index, image_url, weight_grams, calories) VALUES (?, ?, ?, 1, ?, ?, ?, ?)'
+  ).run(name, description, period, order_index, image_url, weight_grams, calories);
 
   res.status(201).json(db.prepare('SELECT * FROM canteen_items WHERE id = ?').get(result.lastInsertRowid));
 });
@@ -245,19 +260,21 @@ router.put('/admin/items/:id', authenticateCanteen, requireAdmin, (req, res) => 
   const item = db.prepare('SELECT * FROM canteen_items WHERE id = ?').get(req.params.id);
   if (!item) return res.status(404).json({ error: 'Plato no encontrado' });
 
-  const name        = toStr(req.body?.name);
-  const description = toStr(req.body?.description) || null;
-  const period      = toStr(req.body?.period);
-  const order_index = parseInt(req.body?.order_index) || 0;
-  const available   = req.body?.available ? 1 : 0;
-  const image_url   = toStr(req.body?.image_url) || null;
+  const name         = toStr(req.body?.name);
+  const description  = toStr(req.body?.description) || null;
+  const period       = toStr(req.body?.period);
+  const order_index  = parseInt(req.body?.order_index) || 0;
+  const available    = req.body?.available ? 1 : 0;
+  const image_url    = toStr(req.body?.image_url) || null;
+  const weight_grams = req.body?.weight_grams ? parseInt(req.body.weight_grams) : null;
+  const calories     = req.body?.calories ? parseInt(req.body.calories) : null;
 
   if (!name)                           return res.status(400).json({ error: 'El nombre es requerido' });
   if (!VALID_PERIODS.includes(period)) return res.status(400).json({ error: 'Período inválido' });
 
   db.prepare(
-    'UPDATE canteen_items SET name=?, description=?, period=?, available=?, order_index=?, image_url=? WHERE id=?'
-  ).run(name, description, period, available, order_index, image_url, req.params.id);
+    'UPDATE canteen_items SET name=?, description=?, period=?, available=?, order_index=?, image_url=?, weight_grams=?, calories=? WHERE id=?'
+  ).run(name, description, period, available, order_index, image_url, weight_grams, calories, req.params.id);
 
   res.json(db.prepare('SELECT * FROM canteen_items WHERE id = ?').get(req.params.id));
 });

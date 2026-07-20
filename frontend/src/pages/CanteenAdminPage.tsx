@@ -21,6 +21,8 @@ interface CanteenItem {
   available: number
   order_index: number
   image_url: string | null
+  weight_grams: number | null
+  calories: number | null
 }
 
 interface AdminOrder {
@@ -282,7 +284,7 @@ function PedidosPanel() {
 
 // ── Platos panel ──────────────────────────────────────────────────────────────
 
-const BLANK_ITEM = { name: '', description: '', period: 'almuerzo', order_index: 0, image_url: '' }
+const BLANK_ITEM = { name: '', description: '', period: 'almuerzo', order_index: 0, image_url: '', weight_grams: '', calories: '' }
 
 async function compressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -317,7 +319,7 @@ function PlatosPanel() {
   const [showAdd, setShowAdd]           = useState(false)
   const [newItem, setNewItem]           = useState({ ...BLANK_ITEM })
   const [editingItem, setEditingItem]   = useState<CanteenItem | null>(null)
-  const [editForm, setEditForm]         = useState({ name: '', description: '', period: '', order_index: 0, image_url: '' })
+  const [editForm, setEditForm]         = useState({ name: '', description: '', period: '', order_index: 0, image_url: '', weight_grams: '', calories: '' })
 
   const { data: items = [], isLoading } = useQuery<CanteenItem[]>({
     queryKey: ['canteen-admin-items'],
@@ -336,7 +338,7 @@ function PlatosPanel() {
   })
 
   const updateItem = useMutation({
-    mutationFn: ({ id, ...data }: { id: number; name: string; description: string; period: string; order_index: number; available: number; image_url: string | null }) =>
+    mutationFn: ({ id, ...data }: { id: number; name: string; description: string; period: string; order_index: number; available: number; image_url: string | null; weight_grams: string; calories: string }) =>
       canteenApi.put(`/admin/items/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['canteen-admin-items'] })
@@ -355,6 +357,8 @@ function PlatosPanel() {
         order_index: item.order_index,
         available: item.available ? 0 : 1,
         image_url: item.image_url,
+        weight_grams: item.weight_grams,
+        calories: item.calories,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['canteen-admin-items'] }),
     onError:   (err: any) => toast.error(err.response?.data?.error || 'Error'),
@@ -371,7 +375,7 @@ function PlatosPanel() {
 
   const startEdit = (item: CanteenItem) => {
     setEditingItem(item)
-    setEditForm({ name: item.name, description: item.description ?? '', period: item.period, order_index: item.order_index, image_url: item.image_url ?? '' })
+    setEditForm({ name: item.name, description: item.description ?? '', period: item.period, order_index: item.order_index, image_url: item.image_url ?? '', weight_grams: item.weight_grams?.toString() ?? '', calories: item.calories?.toString() ?? '' })
   }
 
   const filtered = filterPeriod === 'all' ? items : items.filter((i) => i.period === filterPeriod)
@@ -460,6 +464,30 @@ function PlatosPanel() {
                 className="w-full text-sm text-gray-900 placeholder-gray-500 border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
               />
               <p className="text-xs text-gray-500 mt-1">{newItem.description.length}/100 caracteres</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Peso (g) <span className="font-normal text-gray-400">opcional</span></label>
+              <input
+                type="number"
+                min="0"
+                placeholder="Ej: 380"
+                value={newItem.weight_grams}
+                onChange={(e) => setNewItem({ ...newItem, weight_grams: e.target.value })}
+                aria-label="Peso en gramos"
+                className="w-full text-sm text-gray-900 placeholder-gray-500 border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Calorías (kcal) <span className="font-normal text-gray-400">opcional</span></label>
+              <input
+                type="number"
+                min="0"
+                placeholder="Ej: 620"
+                value={newItem.calories}
+                onChange={(e) => setNewItem({ ...newItem, calories: e.target.value })}
+                aria-label="Calorías en kcal"
+                className="w-full text-sm text-gray-900 placeholder-gray-500 border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
+              />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-gray-700 mb-2">Imagen (opcional)</label>
@@ -587,6 +615,30 @@ function PlatosPanel() {
                         />
                         <p className="text-xs text-gray-500 mt-1">{editForm.description.length}/100 caracteres</p>
                       </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Peso (g) <span className="font-normal text-gray-400">opcional</span></label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Ej: 380"
+                          value={editForm.weight_grams}
+                          onChange={(e) => setEditForm({ ...editForm, weight_grams: e.target.value })}
+                          aria-label="Peso en gramos"
+                          className="w-full text-sm text-gray-900 placeholder-gray-500 border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Calorías (kcal) <span className="font-normal text-gray-400">opcional</span></label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Ej: 620"
+                          value={editForm.calories}
+                          onChange={(e) => setEditForm({ ...editForm, calories: e.target.value })}
+                          aria-label="Calorías en kcal"
+                          className="w-full text-sm text-gray-900 placeholder-gray-500 border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
+                        />
+                      </div>
                       <div className="col-span-2">
                         <label className="block text-xs font-semibold text-gray-700 mb-2">Imagen (opcional)</label>
                         <div className="flex items-center gap-3">
@@ -655,6 +707,13 @@ function PlatosPanel() {
                       </p>
                       {item.description && (
                         <p className="text-xs text-gray-400 truncate">{item.description}</p>
+                      )}
+                      {(item.weight_grams || item.calories) && (
+                        <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
+                          {item.weight_grams && <span>⚖️ {item.weight_grams}g</span>}
+                          {item.weight_grams && item.calories && <span className="text-gray-300">·</span>}
+                          {item.calories && <span>🔥 {item.calories} kcal</span>}
+                        </p>
                       )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
