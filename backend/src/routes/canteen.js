@@ -149,17 +149,15 @@ router.post('/orders', authenticateCanteen, (req, res) => {
   if (!item_id) return res.status(400).json({ error: 'item_id requerido' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Fecha inválida' });
 
-  // Validar que la fecha esté dentro del rango permitido: hoy o mañana (máximo 24h de anticipación)
+  // Validar que la fecha esté dentro del rango permitido: hoy hasta 7 días
   const today = new Date().toISOString().split('T')[0];
-  const todayObj = new Date();
-  todayObj.setDate(todayObj.getDate() + 1);
-  const tomorrow = todayObj.toISOString().split('T')[0];
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   if (date < today) {
     return res.status(400).json({ error: 'No podés pedir para fechas pasadas' });
   }
-  if (date > tomorrow) {
-    return res.status(400).json({ error: 'Solo podés pedir con hasta 24 horas de anticipación (hoy o mañana)' });
+  if (date > nextWeek) {
+    return res.status(400).json({ error: 'Solo podés pedir con hasta 7 días de anticipación' });
   }
 
   const db = getDb();
@@ -229,14 +227,15 @@ router.post('/admin/items', authenticateCanteen, requireAdmin, (req, res) => {
   const description = toStr(req.body?.description) || null;
   const period      = toStr(req.body?.period);
   const order_index = parseInt(req.body?.order_index) || 0;
+  const image_url   = toStr(req.body?.image_url) || null;
 
   if (!name)                           return res.status(400).json({ error: 'El nombre es requerido' });
   if (!VALID_PERIODS.includes(period)) return res.status(400).json({ error: 'Período inválido' });
 
   const db     = getDb();
   const result = db.prepare(
-    'INSERT INTO canteen_items (name, description, period, available, order_index) VALUES (?, ?, ?, 1, ?)'
-  ).run(name, description, period, order_index);
+    'INSERT INTO canteen_items (name, description, period, available, order_index, image_url) VALUES (?, ?, ?, 1, ?, ?)'
+  ).run(name, description, period, order_index, image_url);
 
   res.status(201).json(db.prepare('SELECT * FROM canteen_items WHERE id = ?').get(result.lastInsertRowid));
 });
@@ -251,13 +250,14 @@ router.put('/admin/items/:id', authenticateCanteen, requireAdmin, (req, res) => 
   const period      = toStr(req.body?.period);
   const order_index = parseInt(req.body?.order_index) || 0;
   const available   = req.body?.available ? 1 : 0;
+  const image_url   = toStr(req.body?.image_url) || null;
 
   if (!name)                           return res.status(400).json({ error: 'El nombre es requerido' });
   if (!VALID_PERIODS.includes(period)) return res.status(400).json({ error: 'Período inválido' });
 
   db.prepare(
-    'UPDATE canteen_items SET name=?, description=?, period=?, available=?, order_index=? WHERE id=?'
-  ).run(name, description, period, available, order_index, req.params.id);
+    'UPDATE canteen_items SET name=?, description=?, period=?, available=?, order_index=?, image_url=? WHERE id=?'
+  ).run(name, description, period, available, order_index, image_url, req.params.id);
 
   res.json(db.prepare('SELECT * FROM canteen_items WHERE id = ?').get(req.params.id));
 });

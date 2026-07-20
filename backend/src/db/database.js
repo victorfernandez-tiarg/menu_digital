@@ -195,6 +195,9 @@ async function initDb() {
     );
   `);
 
+  // ── Migraciones (columnas añadidas post-deploy) ──────────────────────────
+  try { sqlJsDb.run('ALTER TABLE canteen_items ADD COLUMN image_url TEXT'); } catch (_) {}
+
   // Seed: solo si no hay restaurantes
   const anyRestaurant = database.prepare('SELECT id FROM restaurants LIMIT 1').get();
   if (!anyRestaurant) {

@@ -5,7 +5,7 @@ import {
   UtensilsCrossed, Coffee, Apple, Moon, LogOut,
   ClipboardList, ChefHat, Users, Plus, Pencil,
   Trash2, ToggleLeft, ToggleRight, CheckCircle,
-  BarChart3, Download,
+  BarChart3, Download, Image as ImageIcon,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import canteenApi from '../lib/canteen-api'
@@ -20,6 +20,7 @@ interface CanteenItem {
   period: string
   available: number
   order_index: number
+  image_url: string | null
 }
 
 interface AdminOrder {
@@ -281,7 +282,34 @@ function PedidosPanel() {
 
 // ── Platos panel ──────────────────────────────────────────────────────────────
 
-const BLANK_ITEM = { name: '', description: '', period: 'almuerzo', order_index: 0 }
+const BLANK_ITEM = { name: '', description: '', period: 'almuerzo', order_index: 0, image_url: '' }
+
+async function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = reject
+    reader.onload = (ev) => {
+      const img = new window.Image()
+      img.onerror = reject
+      img.onload = () => {
+        const MAX = 400
+        let { width, height } = img
+        if (width > height) {
+          if (width > MAX) { height = Math.round(height * MAX / width); width = MAX }
+        } else {
+          if (height > MAX) { width = Math.round(width * MAX / height); height = MAX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.82))
+      }
+      img.src = ev.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
 function PlatosPanel() {
   const queryClient = useQueryClient()
@@ -289,7 +317,7 @@ function PlatosPanel() {
   const [showAdd, setShowAdd]           = useState(false)
   const [newItem, setNewItem]           = useState({ ...BLANK_ITEM })
   const [editingItem, setEditingItem]   = useState<CanteenItem | null>(null)
-  const [editForm, setEditForm]         = useState({ name: '', description: '', period: '', order_index: 0 })
+  const [editForm, setEditForm]         = useState({ name: '', description: '', period: '', order_index: 0, image_url: '' })
 
   const { data: items = [], isLoading } = useQuery<CanteenItem[]>({
     queryKey: ['canteen-admin-items'],
@@ -308,7 +336,7 @@ function PlatosPanel() {
   })
 
   const updateItem = useMutation({
-    mutationFn: ({ id, ...data }: { id: number; name: string; description: string; period: string; order_index: number; available: number }) =>
+    mutationFn: ({ id, ...data }: { id: number; name: string; description: string; period: string; order_index: number; available: number; image_url: string | null }) =>
       canteenApi.put(`/admin/items/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['canteen-admin-items'] })
@@ -326,6 +354,7 @@ function PlatosPanel() {
         period: item.period,
         order_index: item.order_index,
         available: item.available ? 0 : 1,
+        image_url: item.image_url,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['canteen-admin-items'] }),
     onError:   (err: any) => toast.error(err.response?.data?.error || 'Error'),
@@ -342,7 +371,7 @@ function PlatosPanel() {
 
   const startEdit = (item: CanteenItem) => {
     setEditingItem(item)
-    setEditForm({ name: item.name, description: item.description ?? '', period: item.period, order_index: item.order_index })
+    setEditForm({ name: item.name, description: item.description ?? '', period: item.period, order_index: item.order_index, image_url: item.image_url ?? '' })
   }
 
   const filtered = filterPeriod === 'all' ? items : items.filter((i) => i.period === filterPeriod)
@@ -431,6 +460,27 @@ function PlatosPanel() {
                 className="w-full text-sm text-gray-900 placeholder-gray-500 border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
               />
               <p className="text-xs text-gray-500 mt-1">{newItem.description.length}/100 caracteres</p>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">Imagen (opcional)</label>
+              <div className="flex items-center gap-3">
+                {newItem.image_url ? (
+                  <div className="relative shrink-0">
+                    <img src={newItem.image_url} alt="preview" className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+                    <button type="button" onClick={() => setNewItem({ ...newItem, image_url: '' })} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 leading-none" aria-label="Quitar imagen">×</button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 shrink-0 text-2xl">🍽️</div>
+                )}
+                <div className="space-y-1">
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer transition-colors">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    {newItem.image_url ? 'Cambiar' : 'Subir imagen'}
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (file) setNewItem({ ...newItem, image_url: await compressImage(file) }) }} />
+                  </label>
+                  <p className="text-xs text-gray-400">Máx. 400×400 px · JPEG</p>
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex gap-2 justify-end pt-2">
@@ -537,6 +587,27 @@ function PlatosPanel() {
                         />
                         <p className="text-xs text-gray-500 mt-1">{editForm.description.length}/100 caracteres</p>
                       </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-2">Imagen (opcional)</label>
+                        <div className="flex items-center gap-3">
+                          {editForm.image_url ? (
+                            <div className="relative shrink-0">
+                              <img src={editForm.image_url} alt="preview" className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+                              <button type="button" onClick={() => setEditForm({ ...editForm, image_url: '' })} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 leading-none" aria-label="Quitar imagen">×</button>
+                            </div>
+                          ) : (
+                            <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 shrink-0 text-2xl">🍽️</div>
+                          )}
+                          <div className="space-y-1">
+                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer transition-colors">
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              {editForm.image_url ? 'Cambiar' : 'Subir imagen'}
+                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (file) setEditForm({ ...editForm, image_url: await compressImage(file) }) }} />
+                            </label>
+                            <p className="text-xs text-gray-400">Máx. 400×400 px · JPEG</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex gap-2 justify-end pt-2">
                       <button 
@@ -571,9 +642,13 @@ function PlatosPanel() {
                   </div>
                 ) : (
                   <div className="px-4 py-3 flex items-center gap-3">
-                    <div className={`shrink-0 p-1.5 rounded-lg ${cfg.bg}`}>
-                      <cfg.Icon className={`w-4 h-4 ${cfg.color}`} />
-                    </div>
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-gray-100" />
+                    ) : (
+                      <div className={`shrink-0 p-1.5 rounded-lg ${cfg.bg}`}>
+                        <cfg.Icon className={`w-4 h-4 ${cfg.color}`} />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium ${item.available ? 'text-gray-900' : 'text-gray-400 line-through'}`}>
                         {item.name}

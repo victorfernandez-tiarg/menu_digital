@@ -27,6 +27,7 @@ interface CanteenItem {
   period: string
   available: number
   order_index: number
+  image_url: string | null
 }
 
 interface CanteenOrder {
@@ -87,9 +88,8 @@ export default function CanteenPage() {
   }, [])
 
   const today = new Date().toISOString().split('T')[0]
-  const tomorrowObj = new Date()
-  tomorrowObj.setDate(tomorrowObj.getDate() + 1)
-  const tomorrow = tomorrowObj.toISOString().split('T')[0]
+  const nextDay = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const tomorrow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [tab, setTab] = useState<'pedir' | 'historial'>('pedir')
 
@@ -266,7 +266,7 @@ export default function CanteenPage() {
             </label>
             <span className="text-xs text-gray-500">
               {selectedDate === today ? '📍 Hoy' : 
-               selectedDate === tomorrow ? '📍 Mañana' :
+               selectedDate === nextDay ? '📍 Mañana' :
                '📍 ' + new Date(selectedDate).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' })}
             </span>
           </div>
@@ -293,7 +293,7 @@ export default function CanteenPage() {
             )}
           </div>
           <p id="date-help-text" className="text-xs text-gray-600 flex items-center gap-1">
-            <span>✓ Podés pedir para:</span> hoy o mañana (máx. 24 horas de anticipación)
+            <span>✓ Podés pedir para:</span> hoy hasta en 7 días
           </p>
         </div>
 
@@ -398,6 +398,13 @@ export default function CanteenPage() {
                       isDisabled  ? 'opacity-35 pointer-events-none' : ''
                     } ${isOrdered ? 'border-green-300' : 'border-gray-200'}`}
                   >
+                    {item.image_url && (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-14 h-14 rounded-xl object-cover shrink-0 border border-gray-100"
+                      />
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className={`font-medium text-sm ${isOrdered ? 'text-green-800' : 'text-gray-900'}`}>
                         {item.name}
@@ -471,7 +478,7 @@ export default function CanteenPage() {
                 return acc
               }, {} as Record<string, HistoryOrder[]>)
 
-            const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+            const tomorrow = nextDay
 
             const dayLabel = (date: string) => {
               if (date === today)    return '📍 Hoy'
